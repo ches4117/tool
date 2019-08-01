@@ -17,22 +17,6 @@ def createDictionary(path):
     if not os.path.isdir(path):
         os.mkdir(path)
 
-
-def downloadImage(path, link):
-    full_file_name = os.path.join(path, file_name)
-    urllib.request.urlretrieve(link, full_file_name)
-
-def cbk(a, b, c):
-    '''回调函数
-    @a:已经下载的数据块
-    @b:数据块的大小
-    @c:远程文件的大小
-    '''
-    per = 100.0*a*b/c
-    if per > 100:
-        per = 100
-    print('%.2f%%' % per)
-
 my_file = Path("./href_list.json")
 if my_file.is_file():
     file = open('./href_list.json', 'r',
@@ -47,19 +31,33 @@ if my_file.is_file():
         res = requests.post(
             url.rstrip(), headers=headers)
         soup = BeautifulSoup(res.text, "html.parser")
-        title = soup.find('h1', id='gj').text
-        title = title.replace('\ufffd', '')
-        path = setDictionary(title.encode('GBK').decode('GBK'))
-        createDictionary(path)
+        if soup.find('h1', id='gj'):
+            title = soup.find('h1', id='gj').text
+            title = title.replace('\ufffd', '')
+            title = title.replace('/', '_')
+            title = title.replace(':', '_')
+            title = title.replace('\\', '_')
+            title = title.replace('?', '_')
+            title = title.replace('*', '_')
+            path = setDictionary(title.encode('GBK', 'ignore').decode('GBK'))
+            createDictionary(path)
 
-        img_list = soup.find_all(
-            'a', href=re.compile("https://e-hentai.org/s/"))
-        # for link in img_list:
-        #     img_url = link.get('href')
-        #     res = requests.post(
-        #         img_url, headers=headers)
-        #     soup = BeautifulSoup(res.text, "html.parser")
-        #     src = soup.find('img', id='img').attrs['src']
+            img_list = soup.find_all(
+                'a', href=re.compile("https://e-hentai.org/s/"))
+            for link in img_list:
+                img_url = link.get('href')
+                res = requests.post(
+                    img_url, headers=headers)
+                soup = BeautifulSoup(res.text, "html.parser")
+
+                file_name = soup.find(id='i2').div.next_sibling.getText()
+                file_name = file_name.split(' :: ')[0]
+                full_file_name = os.path.join(path, file_name)
+                
+                src = soup.find('img', id='img').attrs['src']
+                urllib.request.urlretrieve(src, full_file_name)
+        else:
+            pass
 
     file.close()
 else:
